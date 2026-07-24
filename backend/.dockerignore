@@ -1,0 +1,18 @@
+# Build outputs (host artifacts must never enter the Linux build context)
+**/bin/
+**/obj/
+**/out/
+
+# Local runtime artifacts
+**/logs/
+**/uploads/
+
+# IDE / VCS
+.vs/
+.idea/
+*.user
+.git/
+.gitignore
+
+# Tests are not part of the API image
+tests/

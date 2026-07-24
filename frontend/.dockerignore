@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.vite/
+
+# Env & local
+.env
+.env.*
+!.env.example
+
+# IDE / VCS
+.vs/
+.idea/
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
