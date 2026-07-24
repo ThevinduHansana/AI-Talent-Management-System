@@ -1,0 +1,32 @@
+# ---- .NET ----
+[Bb]in/
+[Oo]bj/
+*.user
+project.lock.json
+.vs/
+
+# Backend runtime artifacts
+backend/src/RecruitmentPlatform.API/logs/
+backend/src/RecruitmentPlatform.API/uploads/
+
+# ---- Node / Vite ----
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# ---- Env & secrets ----
+.env
+.env.*
+!.env.example
+
+# Environment-specific settings hold connection strings / credentials — keep them local.
+# Real secrets belong in user-secrets (dev) or environment variables (deployed).
+appsettings.Development.json
+appsettings.*.Local.json
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

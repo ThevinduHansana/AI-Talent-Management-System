@@ -1,0 +1,92 @@
+name: talentsphere
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recruit_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Recruit@2026!}
+      POSTGRES_DB: ${POSTGRES_DB:-recruitment_platform}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-recruit_app} -d ${POSTGRES_DB:-recruitment_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - talentsphere
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      # This compose stack terminates no TLS, so HTTPS enforcement is disabled to avoid redirect
+      # loops. Behind a real TLS proxy, drop this line (or set true) to enable HSTS + redirection.
+      Security__RequireHttps: "false"
+      # The API applies EF Core migrations and seeds baseline data on startup.
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:-recruitment_platform};Username=${POSTGRES_USER:-recruit_app};Password=${POSTGRES_PASSWORD:-Recruit@2026!}"
+      Jwt__Key: ${JWT_KEY:-please-change-this-to-a-long-random-secret-in-production-0123456789ABCDEF}
+      Jwt__Issuer: RecruitmentPlatform
+      Jwt__Audience: RecruitmentPlatformClients
+      Jwt__AccessTokenExpirationMinutes: "60"
+      Jwt__RefreshTokenExpirationDays: "7"
+      Storage__LocalBasePath: /app/uploads
+      # AI features. With no key the platform falls back to deterministic heuristics.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Communication channels. Both fall back to logging when left unset, so the stack still
+      # boots without a mail server or an SMS provider.
+      Email__Host: ${SMTP_HOST:-}
+      Email__Port: ${SMTP_PORT:-587}
+      Email__Username: ${SMTP_USERNAME:-}
+      Email__Password: ${SMTP_PASSWORD:-}
+      Email__FromAddress: ${MAIL_FROM_ADDRESS:-no-reply@getcareers.local}
+      Email__FromName: ${MAIL_FROM_NAME:-GetCareers}
+      # Used to build clickable links inside emails, so it must be the public web origin.
+      Email__AppBaseUrl: ${WEB_ORIGIN:-http://localhost:8080}
+      Sms__AccountSid: ${TWILIO_ACCOUNT_SID:-}
+      Sms__AuthToken: ${TWILIO_AUTH_TOKEN:-}
+      Sms__FromNumber: ${TWILIO_FROM_NUMBER:-}
+      Notifications__Reminders__Enabled: ${REMINDERS_ENABLED:-true}
+      Notifications__Reminders__FirstReminderMinutes: ${REMINDER_FIRST_MINUTES:-1440}
+      Notifications__Reminders__SecondReminderMinutes: ${REMINDER_SECOND_MINUTES:-60}
+      # Allow the web origin for any direct (non-proxied) API calls.
+      Cors__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:8080}
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-5080}:8080"   # direct API + Swagger access (optional)
+    networks:
+      - talentsphere
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    networks:
+      - talentsphere
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:
+  logs:
+
+networks:
+  talentsphere:
+    driver: bridge
